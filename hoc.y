@@ -10,6 +10,7 @@
 %token  NUMBER
 %left   '+' '-' /* left-associative, same precedence */
 %left   '*' '/' /* left-associative, higher precedence */
+%left   UNARYMINUS
 
 %%
 /* rules */
@@ -23,6 +24,7 @@ expr:   NUMBER  { $$ = $1; }
         |   expr '*' expr   { $$ = $1 * $3; }
         |   expr '/' expr   { $$ = $1 / $3; }
         |   '(' expr ')'    { $$ = $2; }
+        |   '-' expr    %prec UNARYMINUS { $$ = -$2; }
         ;
 %%
 
