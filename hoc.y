@@ -4,36 +4,43 @@
     #include <ctype.h>
     #include <signal.h>
     #include <setjmp.h>
-    #define MAX_MEM 26
+    #include "hoc.h"
+    extern double Pow();
     jmp_buf begin;
-    double mem[MAX_MEM]; // memory for variables 'a' ... 'z'
     int yylex();
     void yyerror(char *);
-    void warning(char *, char *);
-    void execerror(char *, char*);
-    void fpecatch();
 %}
 %union {    // stack type
     double val; // actual value
-    int index;  // index into mem[]
+    Symbol *sym;  // symbol table pointer
 }
 %token  <val>   NUMBER
-%token  <index> VAR
-%type  <val>   expr
+%token  <sym>   VAR BLTIN UNDEF
+%type   <val>   expr asgn
 %right  '='
 %left   '+' '-' /* left-associative, same precedence */
 %left   '*' '/' /* left-associative, higher precedence */
 %left   UNARYMINUS
+%right  '^' /* exponentiation */
 
 %%
 /* rules */
 list:   /* nothing */
         |   list '\n'
+        |   list asgn '\n'
         |   list expr '\n'  { printf("\t%.8g\n", $2); }
+        |   list error '\n' { yyerrok; }
+        ;
+asgn:   VAR '=' expr { $$ = $1->u.val = $3; $1->type = VAR; }
         ;
 expr:   NUMBER
-        |   VAR { $$ = mem[$1]; }
-        |   VAR '=' expr    { $$ = mem[$1] = $3; }
+        |   VAR {
+                if ($1->type == UNDEF)
+                    execerror("undefined variable", $1->name);
+                $$ = $1->u.val;
+            }
+        |   asgn
+        |   BLTIN '(' expr ')'  { $$ = (*($1->u.ptr))($3); }
         |   expr '+' expr   { $$ = $1 + $3; }
         |   expr '-' expr   { $$ = $1 - $3; }
         |   expr '*' expr   { $$ = $1 * $3; }
@@ -42,6 +49,7 @@ expr:   NUMBER
                     execerror("division by zero", "");
                 $$ = $1 / $3;
             }
+        |   expr '^' expr   { $$ = Pow($1, $3); }
         |   '(' expr ')'    { $$ = $2; }
         |   '-' expr    %prec UNARYMINUS { $$ = -$2; }
         ;
@@ -52,7 +60,9 @@ char *progname; /* for error messages */
 int lineno = 1;
 
 int main(int argc, char *argv[]) {
+    void init();
     progname = argv[0];
+    init();
     setjmp(begin);
     signal(SIGFPE, fpecatch);
     yyparse();
@@ -71,9 +81,22 @@ int yylex() {
         scanf("%lf", &yylval.val); // yylval is the value of the token shared between parser and lexical analyzer
         return NUMBER;
     }
-    if (islower(c)) {
-        yylval.index = c - 'a'; // ASCII only
-        return VAR;
+    // if (islower(c)) {
+    //     yylval.index = c - 'a'; // ASCII only
+    //     return VAR;
+    // }
+    if (isalpha(c)) {
+        Symbol *s;
+        char sbuf[100], *p = sbuf;
+        do {
+            *p++ = c;
+        } while ((c=getchar()) != EOF && isalnum(c));
+        ungetc(c, stdin);
+        *p = '\0';
+        if ((s = lookup(sbuf)) == 0)
+            s = install(sbuf, UNDEF, 0.0);
+        yylval.sym = s;
+        return s->type == UNDEF ? VAR : s->type;
     }
     if (c == '\n')
         lineno++;

@@ -1,2 +1,4 @@
-hoc.o
+*.o
 hoc1
+hoc2
+hoc3
