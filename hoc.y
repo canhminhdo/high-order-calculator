@@ -30,6 +30,10 @@ list:   /* nothing */
         |   list asgn '\n'
         |   list expr '\n'  { printf("\t%.8g\n", $2); }
         |   list error '\n' { yyerrok; }
+        /* error is reserved word in yacc for error recovery,
+        which is generated whenever a syntax error happens.
+        yyerrok is a macro defined by yacc being to invoked
+        meaning that that error recovery is complete */
         ;
 asgn:   VAR '=' expr { $$ = $1->u.val = $3; $1->type = VAR; }
         ;
