@@ -69,39 +69,39 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-int yylex() {
-    int c;
-    while((c = getchar()) == ' ' || c == '\t');
+// int yylex() {
+//     int c;
+//     while((c = getchar()) == ' ' || c == '\t');
 
-    if (c == EOF)
-        return 0;
+//     if (c == EOF)
+//         return 0;
 
-    if (c == '.' || isdigit(c)) { // number
-        ungetc(c, stdin);
-        scanf("%lf", &yylval.val); // yylval is the value of the token shared between parser and lexical analyzer
-        return NUMBER;
-    }
-    // if (islower(c)) {
-    //     yylval.index = c - 'a'; // ASCII only
-    //     return VAR;
-    // }
-    if (isalpha(c)) {
-        Symbol *s;
-        char sbuf[100], *p = sbuf;
-        do {
-            *p++ = c;
-        } while ((c=getchar()) != EOF && isalnum(c));
-        ungetc(c, stdin);
-        *p = '\0';
-        if ((s = lookup(sbuf)) == 0)
-            s = install(sbuf, UNDEF, 0.0);
-        yylval.sym = s;
-        return s->type == UNDEF ? VAR : s->type;
-    }
-    if (c == '\n')
-        lineno++;
-    return c;
-}
+//     if (c == '.' || isdigit(c)) { // number
+//         ungetc(c, stdin);
+//         scanf("%lf", &yylval.val); // yylval is the value of the token shared between parser and lexical analyzer
+//         return NUMBER;
+//     }
+//     // if (islower(c)) {
+//     //     yylval.index = c - 'a'; // ASCII only
+//     //     return VAR;
+//     // }
+//     if (isalpha(c)) {
+//         Symbol *s;
+//         char sbuf[100], *p = sbuf;
+//         do {
+//             *p++ = c;
+//         } while ((c=getchar()) != EOF && isalnum(c));
+//         ungetc(c, stdin);
+//         *p = '\0';
+//         if ((s = lookup(sbuf)) == 0)
+//             s = install(sbuf, UNDEF, 0.0);
+//         yylval.sym = s;
+//         return s->type == UNDEF ? VAR : s->type;
+//     }
+//     if (c == '\n')
+//         lineno++;
+//     return c;
+// }
 
 void yyerror(char *s) { // call for yacc syntax error
     warning(s, (char *) 0);
