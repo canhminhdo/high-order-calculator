@@ -20,7 +20,7 @@
 %right  '='
 %left   '+' '-' /* left-associative, same precedence */
 %left   '*' '/' /* left-associative, higher precedence */
-%left   UNARYMINUS
+%left   UNARYMINUS  /* serve the purpose of %token and specify associativity and relative precedence */
 %right  '^' /* exponentiation */
 
 %%
@@ -52,6 +52,9 @@ expr:   NUMBER
         |   expr '^' expr   { $$ = Pow($1, $3); }
         |   '(' expr ')'    { $$ = $2; }
         |   '-' expr    %prec UNARYMINUS { $$ = -$2; }
+        /* specify precedence of a rule,
+        which means the precedence of the rule is the same as
+        the precedence of token UNARYMINUS */
         ;
 %%
 
