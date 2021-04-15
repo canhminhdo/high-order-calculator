@@ -5,18 +5,17 @@
     #include <signal.h>
     #include <setjmp.h>
     #include "hoc.h"
-    extern double Pow();
+    #define code2(c1,c2) code(c1); code(c2)
+    #define code3(c1,c2,c3) code(c1); code(c2); code(c3)
     jmp_buf begin;
     int yylex();
     void yyerror(char *);
 %}
 %union {    // stack type
-    double val; // actual value
     Symbol *sym;  // symbol table pointer
+    Inst *inst; // machine instruction
 }
-%token  <val>   NUMBER
-%token  <sym>   VAR BLTIN UNDEF
-%type   <val>   expr asgn
+%token  <sym>   NUMBER VAR BLTIN UNDEF
 %right  '='
 %left   '+' '-' /* left-associative, same precedence */
 %left   '*' '/' /* left-associative, higher precedence */
@@ -27,35 +26,27 @@
 /* rules */
 list:   /* nothing */
         |   list '\n'
-        |   list asgn '\n'
-        |   list expr '\n'  { printf("\t%.8g\n", $2); }
+        |   list asgn '\n'  { code2(pop, STOP); return 1; }
+        |   list expr '\n'  { code2(print, STOP); return 1; }
         |   list error '\n' { yyerrok; }
         /* error is reserved word in yacc for error recovery,
         which is generated whenever a syntax error happens.
         yyerrok is a macro defined by yacc being to invoked
-        meaning that that error recovery is complete */
+        meaning that error recovery is complete */
         ;
-asgn:   VAR '=' expr { $$ = $1->u.val = $3; $1->type = VAR; }
+asgn:   VAR '=' expr { code3(varpush, (Inst)$1, assign); }
         ;
-expr:   NUMBER
-        |   VAR {
-                if ($1->type == UNDEF)
-                    execerror("undefined variable", $1->name);
-                $$ = $1->u.val;
-            }
+expr:   NUMBER  { code2(constpush, (Inst)$1); }
+        |   VAR { code3(varpush, (Inst)$1, eval); }
         |   asgn
-        |   BLTIN '(' expr ')'  { $$ = (*($1->u.ptr))($3); }
-        |   expr '+' expr   { $$ = $1 + $3; }
-        |   expr '-' expr   { $$ = $1 - $3; }
-        |   expr '*' expr   { $$ = $1 * $3; }
-        |   expr '/' expr   {
-                if ($3 == 0.0)
-                    execerror("division by zero", "");
-                $$ = $1 / $3;
-            }
-        |   expr '^' expr   { $$ = Pow($1, $3); }
-        |   '(' expr ')'    { $$ = $2; }
-        |   '-' expr    %prec UNARYMINUS { $$ = -$2; }
+        |   BLTIN '(' expr ')'  { code2(bltin, (Inst)$1->u.ptr); }
+        |   expr '+' expr   { code(add); }
+        |   expr '-' expr   { code(sub); }
+        |   expr '*' expr   { code(mul); }
+        |   expr '/' expr   { code(divide); }
+        |   expr '^' expr   { code(power); }
+        |   '(' expr ')'
+        |   '-' expr    %prec UNARYMINUS { code(negate); }
         /* specify precedence of a rule,
         which means the precedence of the rule is the same as
         the precedence of token UNARYMINUS */
@@ -72,7 +63,8 @@ int main(int argc, char *argv[]) {
     init();
     setjmp(begin);
     signal(SIGFPE, fpecatch);
-    yyparse();
+    for(initcode(); yyparse(); initcode())
+        execute(prog);
     return 0;
 }
 
@@ -84,8 +76,10 @@ int yylex() {
         return 0;
 
     if (c == '.' || isdigit(c)) { // number
+        double d;
         ungetc(c, stdin);
-        scanf("%lf", &yylval.val); // yylval is the value of the token shared between parser and lexical analyzer
+        scanf("%lf", &d);
+        yylval.sym = install("", NUMBER, d); // yylval is the value of the token shared between parser and lexical analyzer
         return NUMBER;
     }
     // if (islower(c)) {
