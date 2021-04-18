@@ -20,10 +20,13 @@ extern Datum pop();
 typedef int (*Inst)();  // machine instruction
 #define STOP (Inst) 0
 
-extern Inst prog[], *code();
+extern Inst prog[], *progp, *code();
 extern void initcode();
 extern void eval(), add(), sub(), mul(), divide(), negate(), power();
 extern void assign(), bltin(), varpush(), constpush(), print(), execute(Inst *);
+extern void prexpr();
+extern void gt(), lt(), eq(), ge(), le(), ne(), and(), or(), not();
+extern void ifcode(), whilecode();
 
 void execerror(char *, char *);
 void fpecatch();

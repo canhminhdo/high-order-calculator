@@ -33,7 +33,7 @@ Inst *code(Inst f) {    // install on instruction or operand
     if (progp >= &prog[NPROG])
         execerror("program too big", (char *) 0);
     *progp++ = f;
-    return progp;
+    return oprogp;
 }
 
 void execute(Inst *p) { // run the machine
@@ -133,5 +133,109 @@ void bltin() {  // evaluate built-in on top of stack
     Datum d;
     d = pop();
     d.val = (*(double (*)())(*pc++))(d.val);
+    push(d);
+}
+
+void whilecode() {
+    Datum d;
+    Inst *savepc = pc;  // loop body
+
+    execute(savepc+2);  // condition
+    d = pop();
+    while(d.val) {
+        execute(*((Inst **)(savepc)));  // body
+        execute(savepc+2);
+        d = pop();
+    }
+    pc = *((Inst **)(savepc+1));    // next statement
+}
+
+void ifcode() {
+    Datum d;
+    Inst *savepc = pc;  // then part
+
+    execute(savepc+3);  // condition
+    d = pop();
+    if (d.val)
+        execute(*((Inst **)(savepc)));
+    else if (*((Inst **)(savepc+1)))    // else part?
+        execute(*((Inst **)(savepc+1)));
+    pc = *((Inst **)(savepc+2));    // next statement
+}
+
+void prexpr() {
+    Datum d;
+    d = pop();
+    printf("%lf\n", d.val);
+}
+
+void gt() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val > d2.val);
+    push(d1);
+}
+
+void lt() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val < d2.val);
+    push(d1);
+}
+
+void ge() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val >= d2.val);
+    push(d1);
+}
+
+void le() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val <= d2.val);
+    push(d1);
+}
+
+void eq() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val == d2.val);
+    push(d1);
+}
+
+void ne() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val != d2.val);
+    push(d1);
+}
+
+void and() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val != 0.0 && d2.val != 0.0);
+    push(d1);
+}
+
+void or() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val != 0.0 || d2.val != 0.0);
+    push(d1);
+}
+
+void not() {
+    Datum d;
+    d = pop();
+    d.val = (double)(d.val == 0.0);
     push(d);
 }
